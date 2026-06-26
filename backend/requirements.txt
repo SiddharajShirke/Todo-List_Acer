@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+pydantic-settings
+python-jose[cryptography]
+httpx
+openai
+supabase
+celery
+redis
+loguru
+tenacity
+python-multipart
