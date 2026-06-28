@@ -8,6 +8,10 @@ import Commitments from './pages/Commitments';
 import Focus from './pages/Focus';
 import Analytics from './pages/Analytics';
 
+import WeeklyPlanning from './pages/WeeklyPlanning';
+import WeeklyReview from './pages/WeeklyReview';
+import Backlog from './pages/Backlog';
+
 function AppRoutes() {
   const { user, loading, logout } = useAuth();
 
@@ -30,6 +34,9 @@ function AppRoutes() {
         <Route path="commitments" element={<Commitments />} />
         <Route path="focus"       element={<Focus />} />
         <Route path="analytics"   element={<Analytics />} />
+        <Route path="weekly-planning" element={<WeeklyPlanning />} />
+        <Route path="weekly-review" element={<WeeklyReview />} />
+        <Route path="backlog" element={<Backlog />} />
       </Route>
     </Routes>
   );

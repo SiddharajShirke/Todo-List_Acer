@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from app.database import get_db
 from app.routers.deps import get_current_user
 from app.models.user import User
 from app.services.google_calendar import get_calendar_events
@@ -11,6 +13,7 @@ def get_events(
     days: int = Query(4, description="Number of days to fetch events for (including today)"),
     time_min: str = Query(None, description="ISO format start date"),
     time_max: str = Query(None, description="ISO format end date"),
+    db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
     if time_min and time_max:
@@ -25,5 +28,5 @@ def get_events(
         t_min = start.isoformat()
         t_max = end.isoformat()
     
-    events = get_calendar_events(user, t_min, t_max)
+    events = get_calendar_events(user, t_min, t_max, db=db)
     return events

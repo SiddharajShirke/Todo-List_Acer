@@ -27,6 +27,12 @@ def upgrade_db():
     except Exception as e:
         print("end_time might exist:", e)
 
+    try:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN weekly_objective_id BIGINT REFERENCES weekly_objectives(id) ON DELETE SET NULL")
+        print("Added weekly_objective_id to tasks.")
+    except Exception as e:
+        print("weekly_objective_id might exist:", e)
+
     conn.commit()
     conn.close()
     print("DB Upgrade Complete.")

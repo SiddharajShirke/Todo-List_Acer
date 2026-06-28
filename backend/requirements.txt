@@ -3,9 +3,9 @@ uvicorn
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
+asyncpg
 pydantic
 pydantic-settings
-sqlalchemy
 loguru
 python-jose[cryptography]
 google-genai
@@ -20,3 +20,5 @@ alembic
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+supabase
+realtime

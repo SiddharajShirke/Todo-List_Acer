@@ -6,6 +6,7 @@
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getToken, setToken, clearToken, getMe, demoLogin, logout as apiLogout } from '../services/api';
+import { signInWithEmail, signUpWithEmail, exchangeSupabaseToken, supabaseSignOut } from '../services/supabase';
 
 const AuthContext = createContext(null);
 
@@ -44,13 +45,39 @@ export function AuthProvider({ children }) {
     return me;
   }, []);
 
-  const logout = useCallback(() => {
+  const loginWithEmailPassword = useCallback(async (email, password) => {
+    const { data, error } = await signInWithEmail(email, password);
+    if (error) throw error;
+    
+    // Exchange for app JWT
+    const { access_token, user: me } = await exchangeSupabaseToken(data.session.access_token);
+    setToken(access_token);
+    setUser(me);
+    return me;
+  }, []);
+
+  const signupWithEmailPassword = useCallback(async (email, password) => {
+    const { data, error } = await signUpWithEmail(email, password);
+    if (error) throw error;
+    
+    // If email confirmation is off, this immediately logs them in
+    if (data.session) {
+      const { access_token, user: me } = await exchangeSupabaseToken(data.session.access_token);
+      setToken(access_token);
+      setUser(me);
+      return { user: me, hasSession: true, token: access_token };
+    }
+    return { user: data.user, hasSession: false };
+  }, []);
+
+  const logout = useCallback(async () => {
     apiLogout();
+    await supabaseSignOut().catch(() => {});
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithEmailPassword, signupWithEmailPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

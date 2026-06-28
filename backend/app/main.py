@@ -1,9 +1,10 @@
 """
 main.py — FastAPI Application Entry Point
-Wires together routers, CORS, startup events.
 
-On startup: Base.metadata.create_all() creates all ORM tables.
-In production: use Alembic migrations instead.
+Startup sequence:
+  1. Verify DB connection (fail fast if Supabase unreachable)
+  2. Create all ORM tables (idempotent — safe to run every startup)
+  3. Mount all routers
 
 Run locally: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 Run Docker:  docker-compose up
@@ -14,27 +15,44 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from loguru import logger
 from app.config import settings
-from app.database import engine, Base
-from app.models import user, commitment, task, reminder, channel, daily_highlight
+from app.database import engine, Base, verify_db_connection
+
+# Import all models to ensure they are registered with Base before create_all
+from app.models import (
+    user, commitment, channel, weekly_plan, daily_plan,
+    task, daily_highlight, reminder
+)
 from app.focus import models as focus_models
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting AI Productivity Assistant API...")
-    Base.metadata.create_all(bind=engine)
-    logger.success(f"DB tables ready. ENV={settings.APP_ENV}")
+    logger.info("🚀 Starting AI Productivity Assistant API...")
+    logger.info(f"   Environment: {settings.APP_ENV}")
+    logger.info(f"   Database: {'PostgreSQL (Supabase)' if settings.is_postgres else 'SQLite (dev fallback)'}")
+
+    # Verify DB is reachable before accepting traffic
+    if not verify_db_connection():
+        logger.critical("❌ Database connection failed — check DATABASE_URL in .env")
+    else:
+        # Create all tables (idempotent, won't drop existing data)
+        Base.metadata.create_all(bind=engine)
+        logger.success("✅ DB tables ready")
+
     yield
-    logger.info("Shutting down...")
+    logger.info("Shutting down AI Productivity Assistant API...")
+
 
 app = FastAPI(
     title="AI Productivity Assistant API",
-    description="LLM-powered commitment management with NVIDIA NIM + Supabase",
-    version="1.0.0",
+    description="LLM-powered productivity management with Supabase + Google OAuth",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
 )
 
+# ── CORS ───────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -43,9 +61,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Routers ────────────────────────────────────────────────────────────────────
 from app.routers.auth import router as auth_router
 from app.routers.commitments import router as commitments_router
 from app.routers.tasks import router as tasks_router
+from app.routers.daily_plans import router as daily_plans_router
+from app.routers.weekly_plans import router as weekly_plans_router
 from app.focus.router import router as focus_router
 from app.routers.reminders import router as reminders_router
 from app.routers.analytics import router as analytics_router
@@ -57,6 +78,8 @@ from app.routers.calendar import router as calendar_router
 app.include_router(auth_router)
 app.include_router(commitments_router)
 app.include_router(tasks_router)
+app.include_router(daily_plans_router)
+app.include_router(weekly_plans_router)   # Includes /api/weekly-plans AND /api/weekly-objectives (backward compat)
 app.include_router(focus_router)
 app.include_router(reminders_router)
 app.include_router(analytics_router)
@@ -65,15 +88,31 @@ app.include_router(channels_router)
 app.include_router(rituals_router)
 app.include_router(calendar_router)
 
+
+# ── Health Endpoints ───────────────────────────────────────────────────────────
 @app.get("/")
 def root():
-    return {"message": "AI Productivity Assistant API", "docs": "/docs", "version": "1.0.0"}
+    return {
+        "message": "AI Productivity Assistant API v2.0",
+        "docs": "/docs",
+        "version": "2.0.0",
+        "database": "Supabase PostgreSQL" if settings.is_postgres else "SQLite (dev)"
+    }
+
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "env": settings.APP_ENV}
+    db_ok = verify_db_connection()
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "env": settings.APP_ENV,
+        "database": "connected" if db_ok else "error",
+        "supabase_configured": bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY),
+    }
 
+
+# ── Global Error Handler ───────────────────────────────────────────────────────
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception on {request.url}: {exc}")
+    logger.error(f"Unhandled exception on {request.method} {request.url}: {exc}")
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})

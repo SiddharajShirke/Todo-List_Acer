@@ -510,3 +510,52 @@ textarea { resize: vertical; min-height: 80px; }
   .charts-grid { grid-template-columns: 1fr; }
   .commitments-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Sidebar sections ─────────────────────────────────────────── */
+.sidebar-section {
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-2);
+}
+.section-title {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: var(--space-2);
+  padding-left: var(--space-3);
+  font-weight: 600;
+}
+
+/* ─── Weekly Planning ──────────────────────────────────────────── */
+.objectives-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.objective-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.objective-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+.checkbox-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--color-surface-2);
+  color: transparent;
+  border: 1px solid var(--color-border);
+  font-size: 10px;
+}
+.objective-card:hover .checkbox-icon {
+  border-color: var(--color-primary);
+}
