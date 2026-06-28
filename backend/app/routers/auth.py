@@ -116,3 +116,17 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return UserOut.model_validate(user)
+
+from app.schemas.user import UserPreferencesUpdate
+
+@router.patch("/me/preferences", response_model=UserOut)
+def update_preferences(data: UserPreferencesUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    current_prefs = user.preferences or {}
+    current_prefs.update(data.preferences)
+    
+    # We must assign a new dict or use flag_modified for SQLAlchemy to detect JSON mutation
+    user.preferences = dict(current_prefs)
+    
+    db.commit()
+    db.refresh(user)
+    return UserOut.model_validate(user)

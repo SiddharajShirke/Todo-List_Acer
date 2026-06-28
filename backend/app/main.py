@@ -15,7 +15,8 @@ from contextlib import asynccontextmanager
 from loguru import logger
 from app.config import settings
 from app.database import engine, Base
-from app.models import user, commitment, task, focus_session, reminder  # noqa: registers models
+from app.models import user, commitment, task, reminder, channel, daily_highlight
+from app.focus import models as focus_models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,7 +46,7 @@ app.add_middleware(
 from app.routers.auth import router as auth_router
 from app.routers.commitments import router as commitments_router
 from app.routers.tasks import router as tasks_router
-from app.routers.focus import router as focus_router
+from app.focus.router import router as focus_router
 from app.routers.reminders import router as reminders_router
 from app.routers.analytics import router as analytics_router
 from app.routers.ai import router as ai_router

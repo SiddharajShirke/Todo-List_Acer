@@ -2,7 +2,7 @@
 models/user.py — User ORM Model
 preferences JSON field stores: focus_mode, pomodoro_work_mins, streak_count, preferred_style, total_focus_minutes
 """
-from sqlalchemy import BigInteger, Integer, String, DateTime, JSON
+from sqlalchemy import Integer, Integer, String, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.database import Base

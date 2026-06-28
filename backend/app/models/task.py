@@ -4,7 +4,7 @@ LLM-generated decomposition of a Commitment.
 pomodoros_estimated = ceil(estimated_minutes / 25)
 pomodoros_completed incremented after each Pomodoro session on this task.
 """
-from sqlalchemy import BigInteger, String, Text, Date, Time, Boolean, Integer, DateTime, ForeignKey
+from sqlalchemy import Integer, String, Text, Date, Time, Boolean, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -12,8 +12,8 @@ from app.database import Base
 class Task(Base):
     __tablename__ = "tasks"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    commitment_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("commitments.id", ondelete="CASCADE"), nullable=True, index=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    commitment_id: Mapped[int] = mapped_column(Integer, ForeignKey("commitments.id", ondelete="CASCADE"), nullable=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     priority: Mapped[str] = mapped_column(String(20), default="none")
@@ -24,7 +24,7 @@ class Task(Base):
     actual_minutes: Mapped[int] = mapped_column(Integer, default=0)
     pomodoros_estimated: Mapped[int] = mapped_column(Integer, default=1)
     pomodoros_completed: Mapped[int] = mapped_column(Integer, default=0)
-    channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channels.id", ondelete="SET NULL"), nullable=True)
+    channel_id: Mapped[int] = mapped_column(Integer, ForeignKey("channels.id", ondelete="SET NULL"), nullable=True)
     planned_date: Mapped[Date] = mapped_column(Date, nullable=True)
     start_time: Mapped[Time] = mapped_column(Time, nullable=True)
     end_time: Mapped[Time] = mapped_column(Time, nullable=True)

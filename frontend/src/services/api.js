@@ -39,6 +39,7 @@ async function req(method, path, body) {
 // ── Auth ───────────────────────────────────────────────────────────
 export const demoLogin = () => req("POST", "/auth/demo-login");
 export const getMe = () => req("GET", "/auth/me");
+export const updatePreferences = (preferences) => req("PATCH", "/auth/me/preferences", { preferences });
 export const logout = () => clearToken();
 
 // ── Commitments ────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ export const markDone = (id) => req("PATCH", `/api/commitments/${id}/done`);
 export const deleteCommitment = (id) => req("DELETE", `/api/commitments/${id}`);
 
 // ── Tasks ──────────────────────────────────────────────────────────
+export const getTasks = (plannedDate) => req("GET", `/api/tasks${plannedDate ? '?planned_date=' + plannedDate : ''}`);
 export const markTaskDone = (taskId) => req("PATCH", `/api/tasks/${taskId}/done`);
 export const getRecoveryPlan = (commitmentId) => req("GET", `/api/tasks/${commitmentId}/recovery-plan`);
 
@@ -61,6 +63,7 @@ export const getActiveSession = () => req("GET", "/api/focus/active");
 export const getRecommendation = () => req("GET", "/api/focus/recommend");
 export const getTodayStats = () => req("GET", "/api/focus/today");
 export const getFocusTasks = () => req("GET", "/api/focus/tasks");
+export const getSessionHistory = () => req("GET", "/api/focus/history");
 
 // ── Reminders & Calendar ───────────────────────────────────────────
 export const getReminders = () => req("GET", "/api/reminders");

@@ -35,10 +35,14 @@ function AppRoutes() {
   );
 }
 
+import { StatsProvider } from './context/StatsContext';
+
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <StatsProvider>
+        <AppRoutes />
+      </StatsProvider>
     </AuthProvider>
   );
 }

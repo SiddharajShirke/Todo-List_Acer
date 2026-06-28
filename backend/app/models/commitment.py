@@ -3,15 +3,15 @@ models/commitment.py — Core Commitment Entity
 priority_score (0-100) and risk_score (0.0-1.0) updated by Celery workers.
 metadata_json stores raw_text, confidence, external IDs, etc.
 """
-from sqlalchemy import BigInteger, String, Text, Date, Numeric, Float, DateTime, ForeignKey, Boolean, JSON
+from sqlalchemy import Integer, String, Text, Date, Numeric, Float, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
 class Commitment(Base):
     __tablename__ = "commitments"
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)

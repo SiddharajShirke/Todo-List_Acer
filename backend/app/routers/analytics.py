@@ -8,7 +8,7 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.user import User
-from app.models.focus_session import FocusSession
+from app.focus.models import FocusSession
 from app.models.commitment import Commitment
 from app.routers.deps import get_current_user
 

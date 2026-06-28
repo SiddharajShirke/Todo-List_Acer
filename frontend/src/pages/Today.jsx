@@ -242,11 +242,16 @@ function Today() {
                         <div className="task-info">
                           <p>{t.title}</p>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                            <span style={{ fontSize: '10px' }}>
-                              {t.priority === 'urgent' && '❗'}
-                              {t.priority === 'high' && '🔴'}
-                              {t.priority === 'medium' && '🟡'}
-                              {t.priority === 'low' && '🔵'}
+                            <span style={{ fontSize: '10px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <span>
+                                {t.priority === 'urgent' && '❗'}
+                                {t.priority === 'high' && '🔴'}
+                                {t.priority === 'medium' && '🟡'}
+                                {t.priority === 'low' && '🔵'}
+                              </span>
+                              <span className="muted" style={{ fontSize: '10px' }}>
+                                {t.pomodoros_completed} 🍅 | {Math.round((t.actual_minutes||0)/60 * 10)/10}h
+                              </span>
                             </span>
                             <span className="channel-tag"># {channels.find(c => c.id === t.channel_id)?.name || 'work'}</span>
                           </div>
