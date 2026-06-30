@@ -7,11 +7,12 @@ Architecture:
   - Connection Pool: psycopg2 with PgBouncer (Transaction Pooler, port 6543)
 
 Pool strategy:
-  - pool_size=10: persistent connections kept alive
-  - max_overflow=20: burst capacity (total max 30 connections)
+  - pool_size=20: persistent connections kept alive (increased for agent workloads)
+  - max_overflow=30: burst capacity (total max 50 connections)
   - pool_recycle=1800: recycle connections every 30 min to avoid stale
   - pool_pre_ping=True: test connection health before use
-  - pool_timeout=30: wait max 30s for available connection
+  - pool_use_lifo=True: reuse the most recently used connection for lower latency
+  - pool_timeout=15: wait max 15s for available connection
 """
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
@@ -46,10 +47,11 @@ def _build_engine():
 
     pool_kwargs = {
         "pool_pre_ping": True,
-        "pool_size": settings.DB_POOL_SIZE,
-        "max_overflow": settings.DB_MAX_OVERFLOW,
-        "pool_timeout": settings.DB_POOL_TIMEOUT,
-        "pool_recycle": settings.DB_POOL_RECYCLE,
+        "pool_use_lifo": True, # Optimization: Reuse hottest connection
+        "pool_size": getattr(settings, 'DB_POOL_SIZE', 20),
+        "max_overflow": getattr(settings, 'DB_MAX_OVERFLOW', 30),
+        "pool_timeout": getattr(settings, 'DB_POOL_TIMEOUT', 15),
+        "pool_recycle": getattr(settings, 'DB_POOL_RECYCLE', 1800),
         "echo": settings.APP_ENV == "development",
     }
 

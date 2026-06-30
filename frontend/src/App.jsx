@@ -35,8 +35,8 @@ function AppRoutes() {
         <Route path="focus"       element={<Focus />} />
         <Route path="analytics"   element={<Analytics />} />
         <Route path="weekly-planning" element={<WeeklyPlanning />} />
-        <Route path="weekly-review" element={<WeeklyReview />} />
-        <Route path="backlog" element={<Backlog />} />
+        <Route path="weekly-review"   element={<WeeklyReview />} />
+        <Route path="backlog"         element={<Backlog />} />
       </Route>
     </Routes>
   );

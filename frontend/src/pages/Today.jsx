@@ -4,6 +4,48 @@ import api from '../services/api';
 import AddTaskBar from '../components/AddTaskBar';
 import './Today.css';
 
+const renderMarkdown = (text) => {
+  if (!text) return null;
+  return text.split('\n').map((line, i) => {
+    line = line.trim();
+    if (!line) return null;
+    
+    if (line.startsWith('### ')) {
+      return <h4 key={i} style={{ color: 'var(--color-primary)', marginTop: i>0 ? '24px' : '0', marginBottom: '16px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {line.replace('### ', '')}
+      </h4>;
+    }
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      const cleanLine = line.substring(2);
+      const boldProcessed = cleanLine.split('**').map((part, j) => j % 2 === 1 ? <strong key={j} style={{ color: 'var(--color-text)' }}>{part}</strong> : part);
+      
+      return (
+        <div key={i} style={{
+          background: 'rgba(99, 102, 241, 0.05)',
+          borderLeft: '3px solid rgba(99, 102, 241, 0.5)',
+          padding: '16px',
+          borderRadius: '0 8px 8px 0',
+          marginBottom: '12px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+          transition: 'transform 0.2s, box-shadow 0.2s',
+          cursor: 'default',
+          lineHeight: '1.5',
+          color: 'var(--color-text-muted)'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }}
+        >
+          {boldProcessed}
+        </div>
+      );
+    }
+    
+    // Process bold text in regular paragraphs
+    const boldProcessed = line.split('**').map((part, j) => j % 2 === 1 ? <strong key={j} style={{ color: 'var(--color-text)' }}>{part}</strong> : part);
+    return <p key={i} style={{ margin: '0 0 16px 0', color: 'var(--color-text)', lineHeight: '1.6' }}>{boldProcessed}</p>;
+  });
+};
+
 function Today() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -14,6 +56,7 @@ function Today() {
   const [channels, setChannels] = useState([]);
   const [highlights, setHighlights] = useState([]);
   const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
   
   const [activeTab, setActiveTab] = useState(tabFromQuery);
 
@@ -91,6 +134,16 @@ function Today() {
     fetchData();
   }, [fetchData]);
 
+  // Sync with AI Agent actions
+  useEffect(() => {
+    const handleAiSync = () => {
+      console.log('AI action completed, syncing Today view...');
+      fetchData();
+    };
+    window.addEventListener('ai_action_completed', handleAiSync);
+    return () => window.removeEventListener('ai_action_completed', handleAiSync);
+  }, [fetchData]);
+
   // Handle exiting full screen -> reset to today
   useEffect(() => {
     if (calendarExpanded !== 'full') {
@@ -99,16 +152,6 @@ function Today() {
   }, [calendarExpanded]);
 
   const filteredTasks = tasks.filter(t => filterChannel === 'all' || t.channel_id === parseInt(filterChannel));
-
-  const generateHighlight = async () => {
-    try {
-      await api.post('/api/rituals/shutdown', { date: today.toISOString().split('T')[0] });
-      fetchData(); 
-    } catch (e) {
-      console.error(e);
-      alert("Failed to generate highlight");
-    }
-  };
 
   const getDayName = (dateStr) => {
     const d = new Date(dateStr);
@@ -286,25 +329,115 @@ function Today() {
           </>
         )}
 
-        {activeTab === 'shutdown' && (
-          <div className="shutdown-view">
-            <h2>Generate your daily highlights</h2>
-            <p className="muted">Your daily highlights are auto-generated from the tasks you've completed.</p>
-            <button className="btn btn-primary btn-large mt-6" onClick={generateHighlight}>Get started →</button>
-          </div>
-        )}
-
         {activeTab === 'highlights' && (
-          <div className="highlights-view">
-            <h2>Review your daily highlights</h2>
-            <div className="highlights-feed mt-6">
-              {highlights.map(h => (
-                <div key={h.id} className="highlight-item">
-                  <h4>{getDayName(h.date)} {h.date === today.toISOString().split('T')[0] ? '😌' : '🔥'}</h4>
-                  <p>{h.content}</p>
-                </div>
-              ))}
+          <div className="highlights-view" style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+              <h2>Your Daily Highlights</h2>
+              <button 
+                className="btn btn-primary generate-btn"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const res = await api.post('/api/rituals/shutdown', { date: todayStr });
+                    setHighlights(prev => {
+                      const updated = prev.filter(h => h.date !== todayStr);
+                      return [res, ...updated];
+                    });
+                  } catch(e) {
+                    console.error("Failed to generate highlight", e);
+                    alert("Failed to generate highlight. Ensure you have completed tasks today.");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '12px 24px', fontSize: '15px', transition: 'all 0.3s ease' }}
+              >
+                {loading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="pulsing-circle"></div>
+                    <span>AI Generating...</span>
+                  </div>
+                ) : (
+                  <><span>✨</span> Generate AI Highlight</>
+                )}
+              </button>
             </div>
+            
+            {loading && highlights.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '80px', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: '0 10px 30px rgba(99, 102, 241, 0.1)' }}>
+                <div className="ai-loader-container">
+                  <div className="ai-loader-ring"></div>
+                  <span style={{ fontSize: '48px', display: 'block', marginBottom: '24px', animation: 'pulse-slow 2s infinite' }}>✨</span>
+                </div>
+                <h3 className="loading-gradient-text" style={{ margin: '0 0 12px 0', fontSize: '24px' }}>Reflecting on your day...</h3>
+                <p style={{ color: 'var(--color-text-muted)', maxWidth: '450px', margin: '0 auto', lineHeight: '1.6' }}>
+                  The AI is breaking down your completed tasks and identifying momentum opportunities. This takes about 10-15 seconds.
+                </p>
+              </div>
+            )}
+
+            {!loading && highlights.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px', background: 'var(--color-surface)', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
+                <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>📝</span>
+                <h3 style={{ color: 'var(--color-text)' }}>No highlights yet</h3>
+                <p style={{ color: 'var(--color-text-muted)', maxWidth: '400px', margin: '0 auto' }}>
+                  Complete some tasks today and click the button above to have the AI generate a personalized reflection of your day!
+                </p>
+              </div>
+            ) : (
+              <div className="highlights-feed" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {highlights.map(h => {
+                  const isToday = h.date === today.toISOString().split('T')[0];
+                  return (
+                    <div key={h.id} className="highlight-card" style={{
+                      background: 'var(--color-surface)',
+                      borderRadius: '16px',
+                      padding: '24px',
+                      border: '1px solid var(--color-border)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: isToday ? '#10B981' : 'var(--color-primary)' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)', fontSize: '18px' }}>
+                          {isToday ? 'Today' : getDayName(h.date)} 
+                          <span style={{ fontSize: '14px', color: 'var(--color-text-muted)', fontWeight: 'normal' }}>{getShortDate(h.date)}</span>
+                        </h4>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <span style={{ fontSize: '12px', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', padding: '4px 12px', borderRadius: '20px', fontWeight: 600 }}>
+                            {h.tasks_completed || 0} tasks
+                          </span>
+                          <span style={{ fontSize: '12px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: '20px', fontWeight: 600 }}>
+                            {h.focus_minutes || 0} min focus
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ 
+                        fontSize: '15px', 
+                        lineHeight: '1.6', 
+                        color: 'var(--color-text)',
+                        background: 'var(--color-bg)',
+                        padding: '20px',
+                        borderRadius: '8px',
+                        borderLeft: '4px solid var(--color-primary)'
+                      }}>
+                        {renderMarkdown(h.content)}
+                      </div>
+                      
+                      {h.ai_summary && (
+                        <div style={{ marginTop: '16px', fontSize: '13px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>💡</span> {h.ai_summary}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -116,6 +116,16 @@ function Dashboard() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Sync with AI Agent actions
+  useEffect(() => {
+    const handleAiSync = () => {
+      console.log('AI action completed, syncing Dashboard...');
+      load();
+    };
+    window.addEventListener('ai_action_completed', handleAiSync);
+    return () => window.removeEventListener('ai_action_completed', handleAiSync);
+  }, [load]);
+
   const handleMarkDone = async (id) => {
     try {
       await markDone(id);

@@ -1,5 +1,72 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCommitments, ingestCommitment, createManual, markDone, deleteCommitment } from '../services/api';
+import { getCommitments, ingestCommitment, createManual, markDone, deleteCommitment, createTask, aiPlan, aiRecover } from '../services/api';
+
+// ── AI Result Panel (shown inline below commitment card) ──────────────────────
+function AiResultPanel({ title, content, commitmentId, onClose }) {
+  const [dismissed, setDismissed] = useState([]);
+  const [added, setAdded]         = useState([]);
+  const [adding, setAdding]       = useState(null);
+
+  const lines = content
+    .split('\n')
+    .map(l => l.replace(/^[\d\-\*\.\s•]+/, '').trim())
+    .filter(l => l.length > 5);
+
+  const handleAddTask = async (line, idx) => {
+    setAdding(idx);
+    try {
+      await createTask({ title: line, commitment_id: commitmentId, priority: 'medium' });
+      setAdded(prev => [...prev, idx]);
+    } catch (e) { console.error('Failed to create task:', e); }
+    finally { setAdding(null); }
+  };
+
+  const handleAddAll = async () => {
+    for (let i = 0; i < lines.length; i++) {
+      if (!added.includes(i) && !dismissed.includes(i)) await handleAddTask(lines[i], i);
+    }
+  };
+
+  const pending = lines.filter((_, i) => !added.includes(i) && !dismissed.includes(i));
+
+  return (
+    <div className="ai-result-panel">
+      <div className="ai-result-header">
+        <span style={{ fontWeight: 600 }}>{title}</span>
+        <button className="modal-close" onClick={onClose}>✕</button>
+      </div>
+      <div className="ai-result-cards">
+        {lines.map((line, i) => {
+          if (dismissed.includes(i)) return null;
+          const isAdded = added.includes(i);
+          return (
+            <div key={i} className={`ai-task-card ${isAdded ? 'task-added' : ''}`}>
+              <span className="ai-task-icon">📌</span>
+              <span className="ai-task-text">{line}</span>
+              <div className="ai-task-actions">
+                {isAdded ? (
+                  <span className="task-added-badge">✅ Added</span>
+                ) : (
+                  <>
+                    <button className="btn btn-primary btn-xs" disabled={adding === i} onClick={() => handleAddTask(line, i)}>
+                      {adding === i ? '…' : '+ Task'}
+                    </button>
+                    <button className="btn btn-ghost btn-xs" onClick={() => setDismissed(p => [...p, i])}>✕</button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {pending.length > 0 && (
+        <button className="btn btn-primary" style={{ marginTop: 12, width: '100%' }} onClick={handleAddAll}>
+          ✅ Accept All {pending.length} Steps as Tasks
+        </button>
+      )}
+    </div>
+  );
+}
 
 function RiskBadge({ score }) {
   const level = score >= 0.7 ? 'high' : score >= 0.4 ? 'medium' : 'low';
@@ -29,6 +96,10 @@ function Commitments() {
   const [saving, setSaving]     = useState(false);
   const [saveErr, setSaveErr]   = useState(null);
 
+  // AI panel state
+  const [aiPanel, setAiPanel]     = useState(null); // { commitmentId, title, content }
+  const [aiLoading, setAiLoading] = useState(null); // commitmentId currently loading
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -39,6 +110,16 @@ function Commitments() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Sync with AI Agent actions
+  useEffect(() => {
+    const handleAiSync = () => {
+      console.log('AI action completed, syncing Commitments...');
+      load();
+    };
+    window.addEventListener('ai_action_completed', handleAiSync);
+    return () => window.removeEventListener('ai_action_completed', handleAiSync);
+  }, [load]);
 
   // ── Filters ─────────────────────────────────────────────────────
   const filtered = items.filter(c => {
@@ -59,6 +140,24 @@ function Commitments() {
     if (!confirm('Delete this commitment?')) return;
     try { await deleteCommitment(id); setItems(cs => cs.filter(c => c.id !== id)); }
     catch (e) { console.error(e); }
+  };
+
+  const handleAiPlan = async (c) => {
+    setAiLoading(c.id); setAiPanel(null);
+    try {
+      const result = await aiPlan(c.id);
+      setAiPanel({ commitmentId: c.id, title: `📋 Execution Plan: ${c.title}`, content: result.response });
+    } catch (e) { alert('AI Plan error: ' + e.message); }
+    finally { setAiLoading(null); }
+  };
+
+  const handleAiRecover = async (c) => {
+    setAiLoading(c.id); setAiPanel(null);
+    try {
+      const result = await aiRecover(c.id);
+      setAiPanel({ commitmentId: c.id, title: `🔄 Recovery Plan: ${c.title}`, content: result.response });
+    } catch (e) { alert('AI Recovery error: ' + e.message); }
+    finally { setAiLoading(null); }
   };
 
   // ── AI Ingest ────────────────────────────────────────────────────
@@ -211,10 +310,34 @@ function Commitments() {
                   <div>{formatDue(c.days_until_due)}</div>
                 </div>
                 <div className="commitment-card-actions">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={aiLoading === c.id}
+                    onClick={() => handleAiPlan(c)}
+                    title="Generate execution plan"
+                  >
+                    {aiLoading === c.id ? '⏳' : '🤖 Plan'}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={aiLoading === c.id}
+                    onClick={() => handleAiRecover(c)}
+                    title="Generate recovery plan"
+                  >
+                    {aiLoading === c.id ? '⏳' : '🔄 Recover'}
+                  </button>
                   <button className="btn btn-ghost btn-sm" onClick={() => handleDone(c.id)} title="Mark done">✓ Done</button>
                   <button className="btn btn-ghost btn-sm danger" onClick={() => handleDelete(c.id)} title="Delete">🗑</button>
                 </div>
               </div>
+              {aiPanel && aiPanel.commitmentId === c.id && (
+                <AiResultPanel
+                  title={aiPanel.title}
+                  content={aiPanel.content}
+                  commitmentId={c.id}
+                  onClose={() => setAiPanel(null)}
+                />
+              )}
             </div>
           ))}
         </div>

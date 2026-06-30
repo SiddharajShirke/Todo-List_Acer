@@ -10,6 +10,11 @@ loguru
 python-jose[cryptography]
 google-genai
 langgraph
+langchain-core>=0.3.0
+langchain-nvidia-ai-endpoints>=0.3.0
+langchain-google-genai>=2.0.0
+langgraph-checkpoint-postgres>=1.0.0
+psycopg[binary,pool]>=3.1.0
 celery
 redis
 openai

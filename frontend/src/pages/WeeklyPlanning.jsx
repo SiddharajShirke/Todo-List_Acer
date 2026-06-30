@@ -28,6 +28,16 @@ export default function WeeklyPlanning() {
     fetchChannels();
   }, []);
 
+  // Sync with AI Agent actions
+  useEffect(() => {
+    const handleAiSync = () => {
+      console.log('AI action completed, syncing Weekly Planning...');
+      fetchObjectives();
+    };
+    window.addEventListener('ai_action_completed', handleAiSync);
+    return () => window.removeEventListener('ai_action_completed', handleAiSync);
+  }, []);
+
   const fetchObjectives = async () => {
     try {
       const res = await api.get('/api/weekly-objectives');

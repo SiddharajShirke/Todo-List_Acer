@@ -67,11 +67,15 @@ async def generate_shutdown_highlight(
     # Build AI prompt with full context
     task_summary = ", ".join(task_titles) if task_titles else "No tasks completed"
     prompt_text = (
-        f"Generate a short, journal-style daily highlight (2-3 sentences) based on this productivity session. "
+        f"Generate a detailed, journal-style daily highlight based on this productivity session. "
         f"Date: {target_date}. Completed tasks: {task_summary}. "
         f"Total focus time: {focus_minutes} minutes. "
         f"End-of-day mood: {data.mood_end or 'not specified'}. "
-        "Make it encouraging, reflective, and personal. Acknowledge effort even if output was limited."
+        "Structure your response strictly using markdown:\n"
+        "### 📝 Today's Reflection\n"
+        "(Write a personalized 2-3 sentence reflection on the day's overall effort)\n\n"
+        "### 🎯 Task Explanations & AI Coaching\n"
+        "(For EVERY single task completed, list it as a bullet point and provide a 1-sentence explanation of its impact, plus a micro-recommendation for tomorrow based on that specific task.)"
     )
 
     # Call AI
@@ -177,3 +181,50 @@ def delete_highlight(highlight_id: int, db: Session = Depends(get_db), user: Use
     db.delete(hl)
     db.commit()
     return {"message": "Highlight deleted", "id": highlight_id}
+
+
+# ── Weekly Review Generation ───────────────────────────────────────────────────
+from pydantic import BaseModel
+class WeeklyReviewRequest(BaseModel):
+    start_date: str
+    end_date: str
+
+@router.post("/weekly-review")
+def generate_weekly_review_endpoint(
+    data: WeeklyReviewRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    """Generate a dynamic weekly review using LLM based on tasks completed over the given week range."""
+    from datetime import date as dt
+    start_dt = dt.fromisoformat(data.start_date)
+    end_dt = dt.fromisoformat(data.end_date)
+    
+    tasks = db.query(Task).filter(
+        Task.user_id == user.id,
+        Task.planned_date >= start_dt,
+        Task.planned_date <= end_dt
+    ).all()
+    
+    completed_tasks = [t.title for t in tasks if t.is_done]
+    pending_tasks = [t.title for t in tasks if not t.is_done]
+    
+    prompt_text = (
+        f"Generate a comprehensive Weekly Review for the week of {data.start_date} to {data.end_date}. "
+        f"Completed {len(completed_tasks)} tasks: {', '.join(completed_tasks) if completed_tasks else 'None'}. "
+        f"Pending {len(pending_tasks)} tasks: {', '.join(pending_tasks) if pending_tasks else 'None'}. "
+        "Structure the review strictly into three parts using markdown: \n"
+        "### 🏆 The Wins (celebrate completions)\n"
+        "### 🚧 The Bottlenecks (acknowledge pending items)\n"
+        "### 🚀 Focus for Next Week\n"
+        "Keep it actionable, highly motivating, and provide a direct recommendation for improvement."
+    )
+    
+    client = HybridClient()
+    ai_content = client.generate(
+        prompt=prompt_text,
+        system_instr="You are an elite productivity strategist performing a weekly performance review. Use markdown.",
+        temperature=0.7
+    )
+    
+    return {"content": ai_content, "start_date": data.start_date, "end_date": data.end_date}

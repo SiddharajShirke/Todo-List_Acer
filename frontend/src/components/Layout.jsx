@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useStats } from '../context/StatsContext';
+import AgentChat from '../pages/AgentChat';
+
 
 function Layout({ user, onLogout }) {
   const { todayStats } = useStats();
   const location = useLocation();
+  const [showAiAgent, setShowAiAgent] = useState(false);
 
   return (
     <div className="page" id="app-page">
@@ -26,16 +30,24 @@ function Layout({ user, onLogout }) {
         
         <ul className="nav-links">
           <li><NavLink to="/dashboard" className={({isActive}) => isActive ? 'active' : ''}>🏠 Home</NavLink></li>
-          <li><NavLink to="/today" className={({isActive}) => isActive ? 'active' : ''}>📅 Today</NavLink></li>
-          <li><NavLink to="/focus" className={({isActive}) => isActive ? 'active' : ''}>⏱️ Focus</NavLink></li>
+          <li><NavLink to="/today"     className={({isActive}) => isActive ? 'active' : ''}>📅 Today</NavLink></li>
+          <li><NavLink to="/focus"     className={({isActive}) => isActive ? 'active' : ''}>⏱️ Focus</NavLink></li>
+          <li>
+            <button 
+              className="btn btn-ghost" 
+              style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start', border: 'none', padding: 'var(--space-2) var(--space-3)' }} 
+              onClick={() => setShowAiAgent(p => !p)}
+            >
+              🤖 AI Agent
+            </button>
+          </li>
         </ul>
 
         <div className="sidebar-section">
           <div className="section-title">DAILY RITUALS</div>
           <ul className="nav-links">
             <li><NavLink to="/today?tab=planning" className={() => location.pathname === '/today' && location.search.includes('tab=planning') ? 'active' : ''}>📝 Daily planning</NavLink></li>
-            <li><NavLink to="/today?tab=shutdown" className={() => location.pathname === '/today' && location.search.includes('tab=shutdown') ? 'active' : ''}>🏁 Daily shutdown</NavLink></li>
-            <li><NavLink to="/today?tab=highlights" className={() => location.pathname === '/today' && location.search.includes('tab=highlights') ? 'active' : ''}>✨ Daily highlights</NavLink></li>
+            <li><NavLink to="/today?tab=highlights" className={() => (location.pathname === '/today' && location.search.includes('tab=highlights')) ? 'active' : ''}>✨ Daily highlights</NavLink></li>
           </ul>
         </div>
 
@@ -66,6 +78,12 @@ function Layout({ user, onLogout }) {
           <Outlet />
         </div>
       </main>
+      
+      {/* ── Slide-out AI Agent Panel ── */}
+      <div className={`ai-agent-panel ${showAiAgent ? 'open' : ''}`}>
+        <button className="close-ai-btn" onClick={() => setShowAiAgent(false)}>✕</button>
+        <AgentChat />
+      </div>
     </div>
   );
 }

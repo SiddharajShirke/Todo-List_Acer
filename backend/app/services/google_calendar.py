@@ -20,7 +20,7 @@ import os
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 SCOPES = [
-    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/calendar',
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile'
@@ -95,6 +95,10 @@ def get_calendar_service(user, db=None):
                 db.commit()
         except Exception as e:
             print(f"Failed to refresh Google token for user {user.id}: {e}")
+            # If token refresh fails (e.g. invalid_scope or revoked), we must clear it so we don't infinitely retry
+            user.google_access_token = None
+            if db:
+                db.commit()
             return None
 
     try:

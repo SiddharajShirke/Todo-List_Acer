@@ -37,3 +37,12 @@ Thumbs.db
 
 # Caches
 .eslintcache
+
+# Local Scripts and Prompts
+.ai-stack.json
+graphify-out/
+langgraph_agentic_chat_master_prompt.md
+backend/populate_db.py
+backend/populate_mock_data.py
+backend/restore_tasks.py
+backend/test_ai_chat.py

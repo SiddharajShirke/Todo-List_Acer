@@ -153,6 +153,26 @@ export const getCalendarEvents = (days = 4, timeMin = null, timeMax = null) => {
 // ── Analytics ──────────────────────────────────────────────────────────────────
 export const getFullReport = () => req('GET', '/api/analytics/report');
 
+// ── LangGraph Agentic Endpoints ────────────────────────────────────────────────
+// All three functions talk to the newly activated /api/ai/* router.
+// The raw fetch req() helper already returns parsed JSON, so no .data unwrapping.
+
+export const aiChat = (message, threadId = null) =>
+  req('POST', '/api/ai/chat', {
+    message,
+    thread_id: threadId || crypto.randomUUID(),
+    session_type: 'chat',
+  });
+// Returns: { response: string, thread_id: string, tool_calls_made: string[], session_type: string }
+
+export const aiPlan = (commitmentId) =>
+  req('POST', '/api/ai/plan', { commitment_id: String(commitmentId) });
+// Returns: { response: string, thread_id: string, tool_calls_made: string[], session_type: 'planning' }
+
+export const aiRecover = (commitmentId) =>
+  req('POST', '/api/ai/recover', { commitment_id: String(commitmentId) });
+// Returns: { response: string, thread_id: string, tool_calls_made: string[], session_type: 'recovery' }
+
 // ── Health Check ───────────────────────────────────────────────────────────────
 export const healthCheck = () => req('GET', '/health');
 

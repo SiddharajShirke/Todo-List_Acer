@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import date, datetime
+from datetime import date as dt, datetime
 from typing import Optional
 
 
@@ -7,7 +7,7 @@ class DailyHighlightOut(BaseModel):
     id: int
     user_id: int
     daily_plan_id: Optional[int] = None
-    date: date
+    date: dt
     highlight_type: str
     content: str
     ai_summary: Optional[str] = None
@@ -20,7 +20,7 @@ class DailyHighlightOut(BaseModel):
 
 
 class DailyHighlightCreate(BaseModel):
-    date: date
+    date: dt
     daily_plan_id: Optional[int] = None
     highlight_type: Optional[str] = "shutdown"
     content: str
@@ -28,6 +28,6 @@ class DailyHighlightCreate(BaseModel):
 
 
 class ShutdownRequest(BaseModel):
-    date: Optional[date] = None
+    date: Optional[dt] = None
     daily_plan_id: Optional[int] = None
     mood_end: Optional[str] = None

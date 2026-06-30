@@ -14,8 +14,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from loguru import logger
+import asyncio
+import sys
+
+# Fix for psycopg3 on Windows
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from app.config import settings
 from app.database import engine, Base, verify_db_connection
+from redis import asyncio as aioredis
+import os
+import os
 
 # Import all models to ensure they are registered with Base before create_all
 from app.models import (
@@ -39,7 +49,43 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         logger.success("✅ DB tables ready")
 
-    yield
+    # ── Redis Connection Initialization ────────────────────────────────────────
+    if settings.REDIS_URL:
+        try:
+            redis_client = aioredis.from_url(settings.REDIS_URL, encoding="utf8", decode_responses=False)
+            app.state.redis = redis_client
+            logger.success("✅ Redis connection pool ready (Basic key-value usage)")
+        except Exception as e:
+            logger.warning(f"⚠️ Redis connection failed: {e}")
+    else:
+        logger.warning("⚠️ REDIS_URL not set.")
+
+    # ── LangGraph Checkpointer + Graph Initialization ──────────────────────
+    app.state.graph = None
+    app.state.checkpointer = None
+    if settings.ASYNC_DATABASE_URL:
+        try:
+            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+            from app.ai.graph.graph import build_graph
+
+            async with AsyncPostgresSaver.from_conn_string(
+                settings.ASYNC_DATABASE_URL
+            ) as checkpointer:
+                await checkpointer.setup()   # idempotent — creates checkpoint tables if needed
+                app.state.checkpointer = checkpointer
+                app.state.graph = build_graph(checkpointer=checkpointer)
+                logger.success("✅ LangGraph graph + PostgresSaver checkpointer ready")
+
+                yield   # ← App serves traffic here (checkpointer context stays alive)
+
+        except Exception as e:
+            logger.error(f"❌ LangGraph initialization failed: {e}")
+            logger.warning("   AI chat endpoints will return 503 until this is resolved.")
+            yield   # Still serve non-AI endpoints
+    else:
+        logger.warning("⚠️ ASYNC_DATABASE_URL not set — LangGraph graph NOT initialized. AI chat disabled.")
+        yield
+
     logger.info("Shutting down AI Productivity Assistant API...")
 
 
@@ -101,12 +147,14 @@ def root():
 
 
 @app.get("/health")
-def health():
+def health(request: Request):
     db_ok = verify_db_connection()
+    graph_ok = getattr(request.app.state, "graph", None) is not None
     return {
         "status": "ok" if db_ok else "degraded",
         "env": settings.APP_ENV,
         "database": "connected" if db_ok else "error",
+        "graph": "initialized" if graph_ok else "not_initialized",
         "supabase_configured": bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY),
     }
 
